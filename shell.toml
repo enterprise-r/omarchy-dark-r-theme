@@ -1,0 +1,135 @@
+# Generated from colors.toml by scripts/build.py. Edit templates/shell.toml.tpl.
+#
+# Dark-R shell roles, named as in colors.toml:
+#   hover           accent              #f0a202
+#   keyboard focus  bright_foreground   #fff3e6
+#   current/chosen  green               #77af8a
+#   active, in view cyan                #96c5cf   (active window, lock field)
+#   cards, panels   lighter_background  #181820, border dark_foreground #9385a5
+#   dim text        dark_foreground     #9385a5   (placeholders)
+#   notices         info blue, ok green, warn accent, error red;
+#                   desktop notifications use accent
+# Borders and focus rings clear 3:1 on the background.
+
+[bar]
+background = "#0c040f"
+background-alpha = 1.0
+text = "#b6c1cc"
+# Modules asking for attention read as a warning notice.
+active = "#f0a202"
+scale-with-font = true
+size-horizontal = 32
+size-vertical = 32
+
+[controls]
+# Omarchy draws each control border in the color of its state.
+normal-color = "#e0e6e2"
+normal-fill-alpha = 0.06
+# The resting border is foreground at 0.6, close to dark_foreground.
+normal-border-alpha = 0.6
+normal-border-width = 1
+hover-cursor-color = "#f0a202"
+hover-cursor-fill-alpha = 0.15
+hover-cursor-border-alpha = 1.0
+focus-color = "#fff3e6"
+focus-border-alpha = 1.0
+focus-fill-alpha = 0.16
+selected-color = "#77af8a"
+selected-fill-alpha = 0.18
+selected-border-width = 1
+selected-border-alpha = 1.0
+
+[popups]
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+border = "#9385a5"
+border-width = 1
+
+[tooltip]
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+border = "#9385a5"
+# A 1px rounded border loses its outer bottom pixel, so that edge is thicker.
+border-width = "1 1 2"
+
+[notifications]
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+# Notifications ask for attention: amber, as the bar's attention state.
+border = "#f0a202"
+border-width = "3 1 1"
+countdown = "#f0a202"
+
+[menu]
+# The Omarchy menu and the app launcher share these colors. Their rows are
+# places to go: the highlighted row is the chosen one, sage.
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+border = "#9385a5"
+border-width = "4 1 1"
+scrim = "#0c040f"
+scrim-alpha = 0.55
+selected-background = "#77af8a"
+selected-background-alpha = 1.0
+selected-text = "#0c040f"
+selected-border = "#77af8a"
+selected-border-alpha = 1.0
+
+[polkit]
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+text-error = "#ec8790"
+border = "#9385a5"
+border-error = "#ec8790"
+border-alpha = 1.0
+scrim = "#0c040f"
+scrim-alpha = 0.55
+accent = "#f0a202"
+
+[lock]
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+placeholder = "#9385a5"
+text-error = "#ec8790"
+border = "#9385a5"
+border-active = "#96c5cf"
+border-error = "#ec8790"
+selection = "#3f2c53"
+selection-alpha = 1.0
+
+[dark-r]
+# Read by the Dark-R bar widgets that ./install.sh adds. The theme marker
+# turns their Dark-R look on. With any other theme they draw like the stock
+# widgets. A key in ~/.config/omarchy/shell.toml overrides the color here.
+theme = "dark-r"
+# Text on a filled pill or crumb.
+ink = "#0c040f"
+# The Omarchy button.
+pill = "#77af8a"
+pill-hover = "#9add6d"
+# The clock chip.
+clock = "#9385a5"
+# Workspace crumbs. The current one is sage, outlined in the active-window cyan.
+crumb-current = "#77af8a"
+crumb-current-border = "#96c5cf"
+crumb-occupied = "#9385a5"
+crumb-empty = "#3f2c53"
+crumb-empty-text = "#fff3e6"
+crumb-hover = "#9add6d"
+# An active indicator icon.
+indicator-active = "#77af8a"
+# The plate under dark bar text, when a bright wallpaper turns that text dark.
+plate-light = "#e0e6e2"
+# The starfield.
+star = "#cad9e7"
+star-head = "#e0e6e2"
+star-tail = "#a5ace1"
+star-tail-warm = "#a88070"
+# The band endcap.
+band = "#f4b965"
