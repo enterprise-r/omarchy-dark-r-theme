@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "dark-r.plate",
+  "name": "Dark-R Plate",
+  "version": "0.99.9",
+  "author": "Andrea Ratto",
+  "description": "Background plate under the right side of the bar",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Plate.qml"
+  },
+  "barWidget": {
+    "displayName": "Dark-R Plate",
+    "category": "Layout",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

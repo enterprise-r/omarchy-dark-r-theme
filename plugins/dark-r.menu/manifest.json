@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "dark-r.menu",
+  "name": "Dark-R Menu",
+  "version": "0.99.9",
+  "author": "Andrea Ratto",
+  "description": "Quickshell-powered Omarchy command menu",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Dark-R Menu",
+    "description": "Launches the Omarchy menu",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "basedOn": "4.5.0"
+  }
+}

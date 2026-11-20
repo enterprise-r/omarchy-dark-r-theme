@@ -1,0 +1,4 @@
+{
+  "workspace.empty": "Workspace %1 · empty",
+  "workspace.windows": { "one": "Workspace %1 · %2 window", "other": "Workspace %1 · %2 windows" }
+}

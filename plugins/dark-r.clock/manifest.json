@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "dark-r.clock",
+  "name": "Dark-R Clock",
+  "version": "0.99.9",
+  "author": "Andrea Ratto",
+  "description": "Date/time label with a calendar popup",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Dark-R Clock",
+    "description": "Date/time label with a calendar popup",
+    "category": "Time",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.clock",
+    "basedOn": "4.5.0"
+  }
+}

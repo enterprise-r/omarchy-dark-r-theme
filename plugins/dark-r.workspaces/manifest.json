@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "dark-r.workspaces",
+  "name": "Dark-R Workspaces",
+  "version": "0.99.9",
+  "author": "Andrea Ratto",
+  "description": "Workspace number indicators",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Workspaces.qml"
+  },
+  "barWidget": {
+    "displayName": "Dark-R Workspaces",
+    "description": "Workspace number indicators",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.workspaces",
+    "basedOn": "4.5.0"
+  }
+}

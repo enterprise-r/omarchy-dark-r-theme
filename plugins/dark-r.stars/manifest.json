@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "dark-r.stars",
+  "name": "Dark-R Stars",
+  "version": "0.99.9",
+  "author": "Andrea Ratto",
+  "description": "Full-width slow star trails behind the Dark-R bar controls",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Stars.qml"
+  },
+  "barWidget": {
+    "displayName": "Dark-R Stars",
+    "category": "Layout",
+    "allowMultiple": false,
+    "defaultSection": "left"
+  }
+}

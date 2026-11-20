@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "dark-r.band",
+  "name": "Dark-R Band",
+  "version": "0.99.9",
+  "author": "Andrea Ratto",
+  "description": "A compact structural endcap for the Dark-R theme",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Band.qml"
+  },
+  "barWidget": {
+    "displayName": "Dark-R Band",
+    "category": "Layout",
+    "allowMultiple": true,
+    "defaultSection": "right"
+  }
+}
