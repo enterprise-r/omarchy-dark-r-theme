@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+"""Apply or clear Dark-R colors for GTK4 / libadwaita apps.
+
+libadwaita ignores the gtk-theme setting. The user lever it honors is
+~/.config/gtk-4.0/gtk.css. This writes a managed palette file and an import
+block so Dark-R can leave any other user CSS alone.
+
+When the active Omarchy theme is not Dark-R, the managed import and palette
+file are removed. Existing non-Dark-R content in gtk.css is preserved.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import sys
+import tomllib
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dark_r_common import (  # noqa: E402  (installed beside this hook)
+    THEME_NAME,
+    active_theme_name,
+    contrast,
+    load_colors,
+    on_color,
+    roles,
+)
+
+BEGIN = "/* BEGIN omarchy-dark-r gtk4 */"
+END = "/* END omarchy-dark-r gtk4 */"
+IMPORT = '@import url("omarchy-dark-r.css");'
+PALETTE_NAME = "omarchy-dark-r.css"
+
+# D-Bus activatable services that keep a process alive after the window closes.
+# libadwaita loads user CSS at startup, so they need a restart to repaint.
+RESTART_NAMES = (
+    "nautilus",
+    "geary",
+    "gnome-calendar",
+    "gnome-control-center",
+    "gnome-system-monitor",
+    "baobab",
+    "evince",
+    "loupe",
+    "simple-scan",
+)
+
+
+def ink(color: str, background: str, bright: str | None = None) -> str:
+    """Palette color for icons and text on the window.
+
+    libadwaita's documented standalone form lightens with
+    `oklab(... max(l, 0.85) ...)`, which can paint a color the palette does
+    not contain. Use the palette color when it already reads on the
+    background.
+    """
+    if contrast(color, background) >= 4.5:
+        return color
+    if bright and contrast(bright, background) >= 4.5:
+        return bright
+    return on_color(background, background, color)
+
+
+def build_css(colors: dict[str, str]) -> str:
+    r = roles(colors)
+    bg, fg, card = r["bg"], r["fg"], r["card"]
+
+    def tone(name: str) -> tuple[str, str, str]:
+        # Standalone ink, filled background, text on the fill.
+        fill = r[name]
+        return ink(fill, bg), fill, on_color(fill, bg, fg)
+
+    accent_ink, accent_bg, accent_fg = tone("primary")
+    error_ink, error_bg, error_fg = tone("error")
+    ok_ink, ok_bg, ok_fg = tone("ok")
+    warn_ink, warn_bg, warn_fg = tone("warn")
+
+    # libadwaita 1.10 defines each --var from the matching @define-color, and
+    # older releases read only the latter, so one table feeds both forms.
+    adwaita = {
+        "window_bg_color": bg,
+        "window_fg_color": fg,
+        "view_bg_color": bg,
+        "view_fg_color": fg,
+        "headerbar_bg_color": r["bar"],
+        "headerbar_fg_color": fg,
+        "headerbar_border_color": r["edge"],
+        "headerbar_backdrop_color": card,
+        "card_bg_color": card,
+        "card_fg_color": fg,
+        "dialog_bg_color": card,
+        "dialog_fg_color": fg,
+        "popover_bg_color": card,
+        "popover_fg_color": fg,
+        "sidebar_bg_color": card,
+        "sidebar_fg_color": fg,
+        "sidebar_backdrop_color": bg,
+        "sidebar_border_color": r["edge"],
+        "secondary_sidebar_bg_color": card,
+        "secondary_sidebar_fg_color": fg,
+        "secondary_sidebar_backdrop_color": bg,
+        "secondary_sidebar_border_color": r["edge"],
+        "thumbnail_bg_color": card,
+        "thumbnail_fg_color": fg,
+        "overview_bg_color": card,
+        "overview_fg_color": fg,
+        "accent_color": accent_ink,
+        "accent_bg_color": accent_bg,
+        "accent_fg_color": accent_fg,
+        "destructive_color": error_ink,
+        "destructive_bg_color": error_bg,
+        "destructive_fg_color": error_fg,
+        "success_color": ok_ink,
+        "success_bg_color": ok_bg,
+        "success_fg_color": ok_fg,
+        "warning_color": warn_ink,
+        "warning_bg_color": warn_bg,
+        "warning_fg_color": warn_fg,
+        "error_color": error_ink,
+        "error_bg_color": error_bg,
+        "error_fg_color": error_fg,
+    }
+    # GTK3-era names that some GTK4 apps still read.
+    legacy = {
+        "theme_bg_color": bg,
+        "theme_fg_color": fg,
+        "theme_base_color": bg,
+        "theme_text_color": fg,
+        "theme_selected_bg_color": r["line"],
+        "theme_selected_fg_color": r["bright"],
+        "theme_unfocused_bg_color": bg,
+        "theme_unfocused_fg_color": fg,
+        "theme_unfocused_base_color": bg,
+        "theme_unfocused_text_color": fg,
+        "theme_unfocused_selected_bg_color": r["line"],
+        "theme_unfocused_selected_fg_color": r["bright"],
+        "insensitive_bg_color": bg,
+        "insensitive_fg_color": r["dim"],
+        "insensitive_base_color": bg,
+        "borders": r["edge"],
+        "unfocused_borders": r["edge"],
+        "link_color": r["link"],
+        "unfocused_insensitive_color": r["dim"],
+    }
+
+    lines = [
+        "/* Generated by omarchy-dark-r gtk4-libadwaita. Do not edit. */",
+        "/* Palette follows the active Omarchy theme's colors.toml when Dark-R is selected. */",
+        "",
+    ]
+    for name, value in {**adwaita, **legacy}.items():
+        lines.append(f"@define-color {name} {value};")
+    lines.append("")
+    # :root covers modern libadwaita; window covers cases where root scope is inert.
+    for selector in (":root", "window", "window.background"):
+        lines.append(f"{selector} {{")
+        for name, value in adwaita.items():
+            lines.append(f"  --{name.replace('_', '-')}: {value};")
+        lines.append("}")
+        lines.append("")
+    lines.append(widget_rules(r))
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def widget_rules(r: dict[str, str]) -> str:
+    """States libadwaita paints from currentColor washes or the accent.
+
+    User CSS outranks the theme by priority, so plain selectors win. A wash
+    of the light text over the dark window reads as gray, and libadwaita has
+    one accent for checked controls, links, focus and selection, so these
+    few rules carry the Dark-R roles that the variables cannot. They set
+    colors only; shapes stay libadwaita's.
+    """
+    on_hover = on_color(r["hover"], r["bg"], r["fg"])
+    on_primary = on_color(r["primary"], r["bg"], r["fg"])
+    on_primary_hover = on_color(r["primary_hover"], r["bg"], r["fg"])
+    on_error_hover = on_color(r["error_hover"], r["bg"], r["fg"])
+    return f"""/* Header strip. */
+toolbarview > .top-bar,
+toolbarview > .top-bar headerbar {{
+  background-color: {r["bar"]};
+}}
+
+/* Hover: solid amber with dark text, as the launcher. */
+button:hover:not(:disabled):not(:checked):not(.suggested-action):not(.destructive-action):not(.link),
+modelbutton:hover,
+.navigation-sidebar > row:hover:not(:selected) {{
+  background-color: {r["hover"]};
+  color: {on_hover};
+}}
+
+/* Window controls hover on their round icon, as libadwaita draws them;
+   painting the button would show a square. */
+windowcontrols > button:hover:not(:disabled):not(:checked):not(.suggested-action):not(.destructive-action):not(.link) {{
+  background-color: transparent;
+}}
+
+windowcontrols > button:hover > image {{
+  background-color: {r["hover"]};
+  color: {on_hover};
+}}
+
+/* Current or chosen: green with dark text. */
+button:checked:not(.suggested-action):not(.destructive-action),
+.navigation-sidebar > row:selected {{
+  background-color: {r["primary"]};
+  color: {on_primary};
+}}
+
+/* Suggested and destructive keep their color on hover, brightened. */
+button.suggested-action:hover:not(:disabled) {{
+  background-color: {r["primary_hover"]};
+  color: {on_primary_hover};
+}}
+
+button.destructive-action:hover:not(:disabled) {{
+  background-color: {r["error_hover"]};
+  color: {on_error_hover};
+}}
+
+selection,
+text selection {{
+  background-color: {r["line"]};
+  color: {r["bright"]};
+}}
+
+link,
+button.link {{
+  color: {r["link"]};
+}}
+
+link:visited,
+button.link:visited {{
+  color: {r["link_visited"]};
+}}
+
+link:hover,
+button.link:hover {{
+  color: {r["link_hover"]};
+}}
+
+:focus-visible {{
+  outline-color: {r["focus"]};
+}}
+"""
+
+
+def strip_managed_block(text: str) -> str:
+    pattern = re.compile(
+        re.escape(BEGIN) + r".*?" + re.escape(END) + r"\n?",
+        re.DOTALL,
+    )
+    return pattern.sub("", text)
+
+
+def write_import(gtk_css: Path, enable: bool) -> None:
+    text = gtk_css.read_text() if gtk_css.is_file() else ""
+    text = strip_managed_block(text).lstrip("\n")
+    if enable:
+        block = f"{BEGIN}\n{IMPORT}\n{END}\n"
+        text = block + ("\n" + text if text else "")
+    if text.strip():
+        gtk_css.parent.mkdir(parents=True, exist_ok=True)
+        tmp = gtk_css.with_name(gtk_css.name + ".dark-r-tmp")
+        tmp.write_text(text if text.endswith("\n") else text + "\n")
+        tmp.replace(gtk_css)
+    elif gtk_css.exists() or gtk_css.is_symlink():
+        gtk_css.unlink()
+
+
+def windowed_pids() -> set[int] | None:
+    """Processes that own a window, or None when Hyprland cannot be asked."""
+    try:
+        result = subprocess.run(["hyprctl", "clients", "-j"], check=True, capture_output=True, text=True, timeout=5)
+        return {int(client["pid"]) for client in json.loads(result.stdout) if isinstance(client, dict) and "pid" in client}
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError):
+        return None
+
+
+def running_pids(name: str) -> list[int]:
+    try:
+        result = subprocess.run(["pgrep", "-x", name], check=False, capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [int(pid) for pid in result.stdout.split() if pid.isdigit()]
+
+
+def restart_gtk_services() -> None:
+    """Stop the windowless instances so their next window loads the new CSS.
+
+    A process with an open window is left alone: stopping it would close the
+    user's work. When Hyprland cannot say which processes have windows,
+    nothing is stopped.
+    """
+    windows = windowed_pids()
+    if windows is None:
+        return
+    for name in RESTART_NAMES:
+        for pid in running_pids(name):
+            if pid in windows:
+                continue
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+
+
+def apply(home: Path, colors_path: Path | None = None, force: bool = False, clear: bool = False, restart: bool = True) -> int:
+    gtk_dir = home / ".config/gtk-4.0"
+    palette = gtk_dir / PALETTE_NAME
+    gtk_css = gtk_dir / "gtk.css"
+
+    if clear:
+        write_import(gtk_css, enable=False)
+        if palette.exists() or palette.is_symlink():
+            palette.unlink()
+        if restart:
+            restart_gtk_services()
+        return 0
+
+    theme = active_theme_name(home)
+    if not force and theme != THEME_NAME:
+        write_import(gtk_css, enable=False)
+        if palette.exists() or palette.is_symlink():
+            palette.unlink()
+        return 0
+
+    if colors_path is None:
+        colors_path = home / ".local/state/omarchy/current/theme/colors.toml"
+    try:
+        colors = load_colors(colors_path)
+        css = build_css(colors)
+    except (OSError, ValueError, tomllib.TOMLDecodeError):
+        return 0
+
+    gtk_dir.mkdir(parents=True, exist_ok=True)
+    tmp = palette.with_name(palette.name + ".dark-r-tmp")
+    tmp.write_text(css)
+    tmp.replace(palette)
+    write_import(gtk_css, enable=True)
+    if restart:
+        restart_gtk_services()
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--clear", action="store_true", help="remove Dark-R GTK4 overrides")
+    parser.add_argument("--force", action="store_true", help="apply even when the active theme is not Dark-R")
+    parser.add_argument("--colors", type=Path, help="colors.toml to render (implies --force)")
+    parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--print", action="store_true", help="print CSS to stdout instead of installing")
+    parser.add_argument("--no-restart", action="store_true", help="leave running GTK 4 services alone")
+    args = parser.parse_args()
+    if args.print:
+        path = args.colors or (args.home / ".local/state/omarchy/current/theme/colors.toml")
+        print(build_css(load_colors(path)), end="")
+        return 0
+    force = args.force or args.colors is not None
+    return apply(args.home, colors_path=args.colors, force=force, clear=args.clear, restart=not args.no_restart)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
