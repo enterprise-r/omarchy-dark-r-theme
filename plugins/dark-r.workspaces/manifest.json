@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dark-r.workspaces",
   "name": "Dark-R Workspaces",
-  "version": "0.99.9",
+  "version": "1.0.0",
   "author": "Andrea Ratto",
   "description": "Workspace number indicators",
   "kinds": [

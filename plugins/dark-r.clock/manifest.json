@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dark-r.clock",
   "name": "Dark-R Clock",
-  "version": "0.99.9",
+  "version": "1.0.0",
   "author": "Andrea Ratto",
   "description": "Date/time label with a calendar popup",
   "kinds": [

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dark-r.plate",
   "name": "Dark-R Plate",
-  "version": "0.99.9",
+  "version": "1.0.0",
   "author": "Andrea Ratto",
   "description": "Background plate under the right side of the bar",
   "kinds": [
