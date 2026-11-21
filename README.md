@@ -7,6 +7,8 @@ chosen. Amber is hover.
 
 ![Dark R Preview](preview.png)
 
+![Dark R Showoff](showoff.png)
+
 Tested with Omarchy 4.5.0.
 
 ## Install
@@ -191,7 +193,7 @@ python3 scripts/build.py --check   # what CI runs
 `vscode-theme.json` and the boot images use Omarchy's own template and assets,
 so building them needs Omarchy installed. `intro.png` is the first image on this
 page. `preview.png` is the second, and the theme preview Omarchy shows in the
-switcher. After a new screenshot of that preview,
+switcher. `showoff.png` is the third. After a new screenshot of that preview,
 `python3 scripts/build.py --compress-preview` shrinks `preview.png`. It uses 256
 colors, as the stock previews do, only when every theme color stays exact and no
 pixel visibly changes. Otherwise it recompresses without loss.
