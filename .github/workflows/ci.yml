@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Checks that need Omarchy (its renderer, shell code, and assets) skip here.
+      - name: Tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Built files are up to date
+        run: python3 scripts/build.py --check
+
+      - name: Shell scripts
+        run: shellcheck install.sh scripts/fork-drift.sh
+
+      - name: Image sizes
+        run: |
+          status=0
+          while IFS= read -r -d '' image; do
+            size=$(stat -c %s "$image")
+            # Stock Omarchy wallpapers reach about 5 MB.
+            if (( size > 5 * 1024 * 1024 )); then
+              echo "$image is $((size / 1024)) KB; keep images under 5 MB"
+              status=1
+            fi
+          done < <(find . -path ./.git -prune -o \( -name '*.png' -o -name '*.webp' -o -name '*.jpg' \) -print0)
+          exit $status
